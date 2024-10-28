@@ -1,0 +1,147 @@
+#Line drawing with MPL with mouse input
+#this one is done
+import pygame
+from pygame.locals import *
+from OpenGL.GL import *
+from OpenGL.GLUT import *
+
+pygame.init()
+
+width, height = 800, 800
+pygame.display.set_mode((width, height), DOUBLEBUF | OPENGL)
+glMatrixMode(GL_PROJECTION)
+glLoadIdentity()
+glOrtho(0, width, height, 0, -1, 1)
+glMatrixMode(GL_MODELVIEW)
+
+lines = []  # Store lines as list of start and end points
+
+drawing = False  # Flag to indicate if drawing is in progress
+start_point = (0, 0)  # Start point of current line
+end_point = (0, 0)  # End point of current line
+
+def find_zone(x0, y0, x1, y1):
+  dx = x1 - x0
+  dy = y1 - y0
+  if dx >= 0 and dy >= 0:
+    if abs(dx) >= abs(dy):
+      return 0
+    else:
+      return 1
+  if dx <= 0 and dy >= 0:
+    if abs(dx) >= abs(dy):
+      return 3
+    else:
+      return 2
+  if dx <= 0 and dy <= 0:
+    if abs(dx) >= abs(dy):
+      return 4
+    else:
+      return 5
+  if dx >= 0 and dy <= 0:
+    if abs(dx) >= abs(dy):
+      return 7
+    else:
+      return 6
+
+def convert_to_zz(zone, x0, y0, x1, y1):
+  if zone == 0:
+    return x0, y0, x1, y1
+  elif zone == 1:
+    return y0, x0, y1, x1
+  elif zone == 2:
+    return y0, -x0, y1, -x1
+  elif zone == 3:
+    return -x0, y0, -x1, y1
+  elif zone == 4:
+    return -x0, -y0, -x1, -y1
+  elif zone == 5:
+    return -y0, -x0, -y1, -x1
+  elif zone == 6:
+    return -y0, x0, -y1, x1
+  else:
+    return x0, -y0, x1, -y1
+
+def ConvertOriginal(zone, x0, y0):
+  if zone == 0:
+    return x0, y0
+  elif zone == 1:
+    return y0, x0
+  elif zone == 2:
+    return -y0, x0
+  elif zone == 3:
+    return -x0, y0
+  elif zone == 4:
+    return -x0, -y0
+  elif zone == 5:
+    return -y0, -x0
+  elif zone == 6:
+    return y0, -x0
+  else:
+    return x0, -y0
+
+def draw_line(x0, y0, x1, y1):
+  Original_Zone = find_zone(x0, y0, x1, y1)
+  Convert_Points = convert_to_zz(Original_Zone, x0, y0, x1, y1)
+  x0, y0, x1, y1 = Convert_Points[0], Convert_Points[1], Convert_Points[2], Convert_Points[3]
+  dx = x1 - x0
+  dy = y1 - y0
+  d = 2 * dy - dx
+  dE = 2 * dy
+  NE = 2 * (dy-dx)
+  p = x0
+  q = y0
+  glColor3f(255,0, 255)
+  glBegin(GL_POINTS)
+  while p <= x1:
+    temp = ConvertOriginal(Original_Zone, p/100, q/100)
+    glVertex2f(temp[0], temp[1])
+    if d > 0:
+      d = d + NE
+      q = q + 1
+    else:
+      d = d + dE
+    p += 1
+  glEnd()
+
+
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.MOUSEBUTTONDOWN:  # Check for mouse button down event
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            if event.button == 1:  # Left mouse button
+                if not drawing:  # If not already drawing, start a new line
+                    start_point = (mouse_x, mouse_y)
+                    end_point = (mouse_x, mouse_y)
+                    drawing = True
+        elif event.type == pygame.MOUSEMOTION:  # Check for mouse
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            if drawing:  # If drawing in progress, update end point
+                end_point = (mouse_x, mouse_y)
+        elif event.type == pygame.MOUSEBUTTONUP:  # Check for mouse button up event
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            if event.button == 1:  # Left mouse button
+                if drawing:  # If drawing in progress, end current line
+                    end_point = (mouse_x, mouse_y)
+                    lines.append((start_point, end_point))  # Add line to list of lines
+                    drawing = False
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glBegin(GL_LINES)
+        glColor3f(0, 1, 0)
+        for line in lines:
+            line_start = line[0]
+            line_end = line[1]
+            glVertex2f(line_start[0], line_start[1])
+            glVertex2f(line_end[0], line_end[1])
+        if drawing:
+            glVertex2f(start_point[0], start_point[1])
+            glVertex2f(end_point[0], end_point[1])
+        glEnd()
+        pygame.display.flip()
+
+
+

@@ -1,0 +1,104 @@
+# Initialize Pygame
+pygame.init()
+
+# Set up Pygame window
+width, height = 800, 600
+pygame.display.set_mode((width, height), DOUBLEBUF | OPENGL)
+
+# List to store circles' centers and radii
+circles = []
+
+# List to store previously selected center coordinates
+centers = []
+
+
+def drawPoints(x, y):
+    glPointSize(2.0)
+    glBegin(GL_POINTS)
+    glVertex2f(x, y)
+    glEnd()
+def draw_circle(center, radius):
+    X = center[0]
+    Y = center[1]
+
+
+
+
+    d = 1 - radius
+    x = 0
+    y = radius
+    while x <= y:
+        x += 1
+        if d < 0:
+            d += 2 * x + 1
+        else:
+            y -= 1
+            d += 2 * (x - y) + 1
+        drawPoints(X + x, Y + y)
+        drawPoints(X - x, Y + y)
+        drawPoints(X + x, Y - y)
+        drawPoints(X - x, Y - y)
+        drawPoints(X + y, Y + x)
+        drawPoints(X - y, Y + x)
+        drawPoints(X + y, Y - x)
+        drawPoints(X - y, Y - x)
+
+drawing_circle = False
+selected_center = None
+radius = None
+
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left mouse button down
+                if not drawing_circle:
+                    # Start circle drawing
+                    drawing_circle = True
+                    if selected_center is None:
+                        # If no center has been selected yet, use the current mouse position as the center
+                        selected_center = event.pos
+                        centers.append(selected_center)
+
+        elif event.type == pygame.MOUSEMOTION:
+            if event.buttons[0] == 1 and drawing_circle and selected_center is not None:  # Left mouse button held down
+                # Get circle radius from mouse input
+                dx = event.pos[0] - selected_center[0]
+                dy = event.pos[1] - selected_center[1]
+                radius = int((dx**2 + dy**2)**0.5)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1 and drawing_circle and selected_center is not None:  # Left mouse button up
+                # End circle drawing and add to circles list
+                circles.append((selected_center, radius))
+                drawing_circle = False
+                selected_center = None
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glOrtho(0, width, height, 0, 0, 1)  # Modified glOrtho() call
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+
+    glClear(GL_COLOR_BUFFER_BIT)
+
+    # Draw circles
+    for circle in circles:
+        center, radius = circle
+        draw_circle(center, radius)
+
+    # Draw currently drawing circle
+    if drawing_circle and selected_center is not None and radius is not None:
+        draw_circle(selected_center, radius)
+
+    # Draw selected centers
+    glColor3f(1.0, 0.0, 0.0)  # Red color
+    glPointSize(2)
+    glBegin(GL_POINTS)
+    for center in centers:
+        glVertex2f(center[0], center[1])
+    glEnd()
+
+    pygame.display.flip()
+    pygame.time.wait(10)
